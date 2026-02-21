@@ -1,68 +1,112 @@
-
-from fastapi import FastAPI
-from pydantic import BaseModel
+import os
 import requests
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from openai import OpenAI
+
+# ========================
+# CONFIG
+# ========================
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+)
 
 app = FastAPI()
 
+# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-OPENROUTER_KEY = "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"
+# ========================
+# RESUME CONTEXT
+# ========================
 
-resume_data = """
-Name: Huda Khan
+RESUME_CONTEXT = """
+Huda Khan is an MCA student skilled in:
 
-Skills:
-Python, FastAPI, React, MySQL, REST APIs
+- Python
+- FastAPI
+- Machine Learning
+- React
+- Node.js
+- Java
+- MySQL
+- REST API Development
+- AI Projects
 
 Projects:
 1. AI Resume Builder
-2. Pong Game using Python
-3. AI Portfolio Chatbot
+2. AI Portfolio Chatbot
+3. Pong Game using Python
 
-Experience:
-Python Developer Intern
+She is passionate about backend development and AI.
 """
 
-class ChatRequest(BaseModel):
-    message: str
+# ========================
+# ROUTES
+# ========================
 
+@app.get("/")
+def home():
+    return {"message": "Backend Running 🚀"}
+
+
+# ========================
+# CHAT ENDPOINT
+# ========================
 
 @app.post("/chat")
-def chat(req: ChatRequest):
+async def chat(data: dict):
+    user_message = data.get("message")
 
-    prompt = f"""
-You are an AI assistant for a portfolio website.
+    completion = client.chat.completions.create(
+        model="openrouter/auto",
+        messages=[
+            {
+                "role": "system",
+                "content": f"""
+You are an AI assistant answering questions about this person.
 
-Candidate Information:
-{resume_data}
+Resume:
+{RESUME_CONTEXT}
 
-User Question:
-{req.message}
+Always answer based on the resume.
+If question unrelated, respond politely.
 """
-
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "mistralai/mistral-7b-instruct",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        }
+            },
+            {
+                "role": "user",
+                "content": user_message
+            }
+        ],
     )
 
-    data = response.json()
-
-    reply = data["choices"][0]["message"]["content"]
-
+    reply = completion.choices[0].message.content
     return {"reply": reply}
+
+
+# ========================
+# FILE UPLOAD (Optional)
+# ========================
+
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+
+    url = "https://catbox.moe/user/api.php"
+
+    response = requests.post(
+        url,
+        data={"reqtype": "fileupload"},
+        files={"fileToUpload": (file.filename, file.file)},
+    )
+
+    return {"file_url": response.text}

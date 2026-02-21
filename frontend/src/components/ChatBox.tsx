@@ -11,7 +11,7 @@ export default function ChatBox() {
 
     if (!message) return;
 
-    const res = await axios.post("http://localhost:8000/chat", {
+    const res = await axios.post("https://probable-space-succotash-7g9q59rw4wphxvr-8000.app.github.dev/chat", {
       message,
     });
 
