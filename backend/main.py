@@ -13,7 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OPENROUTER_KEY = "PASTE_YOUR_KEY_HERE"
+OPENROUTER_KEY = "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"
 
 resume_data = """
 Name: Huda Khan
